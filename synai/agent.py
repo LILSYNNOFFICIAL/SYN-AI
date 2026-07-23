@@ -1,12 +1,16 @@
-"""Core SYN-AI agent loop."""
+"""Core SYN-AI agent planner."""
 
 from synai.terminal.executor import TerminalExecutor
+from synai.planner.intent import IntentPlanner
 
 
 class SYNAgent:
     def __init__(self):
-        self.terminal = TerminalExecutor()
+        self.executor = TerminalExecutor()
+        self.planner = IntentPlanner()
 
-    def execute_task(self, command: str):
-        """Execute an approved command generated from an AI plan."""
-        return self.terminal.run(command)
+    def handle(self, request):
+        action = self.planner.plan(request)
+        if action.get("command"):
+            return self.executor.run(action["command"])
+        return action

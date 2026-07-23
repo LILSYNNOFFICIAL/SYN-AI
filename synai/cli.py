@@ -1,5 +1,3 @@
-"""Command line interface for SYN-AI."""
-
 from synai.agent import SYNAgent
 
 
@@ -9,11 +7,9 @@ def main():
 
     while True:
         request = input("syn-ai> ").strip()
-
         if request.lower() in {"exit", "quit"}:
             break
-
-        print("AI planning layer not connected yet:", request)
+        print(agent.handle(request))
 
 
 if __name__ == "__main__":
