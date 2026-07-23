@@ -1,6 +1,6 @@
-"""SYN-AI runtime coordinator foundation.
+"""SYN-AI runtime coordinator.
 
-Connects planning components into an execution pipeline.
+Connects planning components into an execution, recovery, and verification pipeline.
 """
 
 from dataclasses import dataclass
@@ -14,13 +14,15 @@ class WorkflowResult:
 
 
 class WorkflowRuntime:
-    """Coordinate safety, execution, and recovery components."""
+    """Coordinate safety, execution, recovery, and verification components."""
 
-    def __init__(self, safety, executor, troubleshooter=None, feedback=None):
+    def __init__(self, safety, executor, troubleshooter=None, feedback=None, verifier=None, repair=None):
         self.safety = safety
         self.executor = executor
         self.troubleshooter = troubleshooter
         self.feedback = feedback
+        self.verifier = verifier
+        self.repair = repair
 
     def execute(self, action):
         if not self.safety.check(action):
@@ -28,11 +30,26 @@ class WorkflowRuntime:
 
         result = self.executor.run(action["command"])
 
-        if not result.get("success", False) and self.troubleshooter:
+        if not result.get("success", False):
+            analysis = None
+            if self.troubleshooter:
+                analysis = self.troubleshooter.analyze(result)
+
+            if self.repair:
+                repaired = self.repair.create_action(analysis)
+                if repaired:
+                    retry = self.execute(repaired)
+                    if retry.success:
+                        return retry
+
+            return WorkflowResult(False, "analysis", analysis)
+
+        if self.verifier:
+            verification = self.verifier.verify(result, action)
             return WorkflowResult(
-                False,
-                "analysis",
-                self.troubleshooter.analyze(result),
+                verification.verified,
+                "verify",
+                verification,
             )
 
         return WorkflowResult(True, "complete", result)
